@@ -133,7 +133,7 @@ def process_single_invoice(image_file, api_key):
 
 # --- 4. UI UTAMA ---
 st.title("🏢 Batch Invoice Processor")
-st.caption("Mode: Detail Item + Auto Calculation")
+st.caption("Mode: Detail Item + Grand Total (Total Only)")
 
 uploaded_files = st.file_uploader(
     "Drop file invoice di sini (JPG/PNG)", 
@@ -165,23 +165,23 @@ if uploaded_files:
             
             df = pd.DataFrame(all_rows_flat)
             
-            # --- CALCULATE GRAND TOTAL (PYTHON LOGIC) ---
-            # 1. Pastikan kolom angka benar-benar angka (handle error jika AI output teks aneh)
+            # --- CALCULATE GRAND TOTAL (HANYA KOLOM TOTAL) ---
+            
+            # 1. Konversi semua kolom angka jadi numeric dulu (supaya Excel bisa baca sebagai angka)
             numeric_cols = ["Quantity", "Harga Satuan", "Subtotal", "Diskon", "Pajak/PPN", "Total"]
             for col in numeric_cols:
                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
             
-            # 2. Hitung Total
-            total_row = {col: "" for col in df.columns} # Buat baris kosong
-            total_row["Deskripsi Item"] = "GRAND TOTAL" # Label
+            # 2. Buat Baris Grand Total
+            total_row = {col: "" for col in df.columns} # Semua kolom kosong dulu
+            total_row["Deskripsi Item"] = "GRAND TOTAL" # Label Penanda
             
-            # Sum kolom numeric
-            for col in numeric_cols:
-                if col in df.columns:
-                    total_row[col] = df[col].sum()
+            # 3. HANYA MENJUMLAHKAN KOLOM 'Total' (Sesuai Request Don)
+            if "Total" in df.columns:
+                total_row["Total"] = df["Total"].sum()
             
-            # 3. Append Baris Total ke DataFrame
+            # 4. Gabungkan ke DataFrame
             df_total = pd.DataFrame([total_row])
             df = pd.concat([df, df_total], ignore_index=True)
 
@@ -203,8 +203,8 @@ if uploaded_files:
             # Reorder
             df_final = df[final_columns]
             
-            # Tampilkan
-            st.write("### 📝 Hasil Ekstraksi & Total")
+            # Tampilkan Tabel
+            st.write("### 📝 Hasil Ekstraksi & Grand Total")
             edited_df = st.data_editor(df_final, num_rows="dynamic", use_container_width=True)
             
             st.divider()
